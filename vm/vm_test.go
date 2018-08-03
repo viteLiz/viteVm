@@ -18,7 +18,7 @@ func TestRun(t *testing.T) {
 	contract.SetCallCode(types.Address{}, types.Hash{}, inputdata)
 	ret, _, _ := run(vm, contract, 10000)
 	expectedRet, _ := hex.DecodeString("03")
-	expectedRet = LeftPadBytes(expectedRet, 32)
+	expectedRet = leftPadBytes(expectedRet, 32)
 	if bytes.Compare(ret, expectedRet) != 0 {
 		t.Fatalf("expected [%v], get [%v]", expectedRet, ret)
 	} else {

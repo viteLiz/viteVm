@@ -5,8 +5,6 @@ import (
 	"math/big"
 )
 
-type MethodSelector [4]byte
-
 type Contract struct {
 	caller    types.Address
 	self      types.Address
@@ -23,8 +21,8 @@ func NewContract(caller types.Address, object types.Address, tokenId types.Token
 	return &Contract{caller: caller, self: object, tokenId: tokenId, amount: amount, data: data, jumpdests: make(destinations)}
 }
 
-func (c *Contract) GetOp(n uint64) OpCode {
-	return OpCode(c.GetByte(n))
+func (c *Contract) GetOp(n uint64) opCode {
+	return opCode(c.GetByte(n))
 }
 
 func (c *Contract) GetByte(n uint64) byte {

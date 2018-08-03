@@ -2,11 +2,11 @@ package vm
 
 import "fmt"
 
-// OpCode is an VM opcode
-type OpCode byte
+// opCode is an VM opcode
+type opCode byte
 
 // isPush specifies if an opcode is a PUSH opcode.
-func (op OpCode) isPush() bool {
+func (op opCode) isPush() bool {
 	switch op {
 	case PUSH1, PUSH2, PUSH3, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH30, PUSH31, PUSH32:
 		return true
@@ -15,13 +15,13 @@ func (op OpCode) isPush() bool {
 }
 
 // isStaticJump specifies if an opcode is JUMP.
-func (op OpCode) isStaticJump() bool {
+func (op opCode) isStaticJump() bool {
 	return op == JUMP
 }
 
 // 0x0 range - arithmetic ops.
 const (
-	STOP OpCode = iota
+	STOP opCode = iota
 	ADD
 	MUL
 	SUB
@@ -37,7 +37,7 @@ const (
 
 // 0x10 range - comparison ops.
 const (
-	LT OpCode = iota + 0x10
+	LT opCode = iota + 0x10
 	GT
 	SLT
 	SGT
@@ -54,12 +54,12 @@ const (
 )
 
 const (
-	BLAKE2B OpCode = 0x20 + iota
+	BLAKE2B opCode = 0x20 + iota
 )
 
 // 0x30 range - closure state.
 const (
-	ADDRESS OpCode = 0x30 + iota
+	ADDRESS opCode = 0x30 + iota
 	BALANCE
 	ORIGIN
 	CALLER
@@ -79,7 +79,7 @@ const (
 
 // 0x40 range - block operations.
 const (
-	BLOCKHASH OpCode = 0x40 + iota
+	BLOCKHASH opCode = 0x40 + iota
 	COINBASE
 	TIMESTAMP
 	NUMBER
@@ -89,7 +89,7 @@ const (
 
 // 0x50 range - 'storage' and execution.
 const (
-	POP OpCode = 0x50 + iota
+	POP opCode = 0x50 + iota
 	MLOAD
 	MSTORE
 	MSTORE8
@@ -105,7 +105,7 @@ const (
 
 // 0x60 range.
 const (
-	PUSH1 OpCode = 0x60 + iota
+	PUSH1 opCode = 0x60 + iota
 	PUSH2
 	PUSH3
 	PUSH4
@@ -173,7 +173,7 @@ const (
 
 // 0xa0 range - logging ops.
 const (
-	LOG0 OpCode = 0xa0 + iota
+	LOG0 opCode = 0xa0 + iota
 	LOG1
 	LOG2
 	LOG3
@@ -182,7 +182,7 @@ const (
 
 // 0xf0 range - closures.
 const (
-	CREATE OpCode = 0xf0 + iota
+	CREATE opCode = 0xf0 + iota
 	CALL
 	CALLCODE
 	RETURN
@@ -194,7 +194,7 @@ const (
 )
 
 // Since the opcodes aren't all in order we can't use a regular slice.
-var opCodeToString = map[OpCode]string{
+var opCodeToString = map[opCode]string{
 	// 0x0 range - arithmetic ops.
 	STOP:       "STOP",
 	ADD:        "ADD",
@@ -354,7 +354,7 @@ var opCodeToString = map[OpCode]string{
 	SELFDESTRUCT: "SELFDESTRUCT",
 }
 
-func (op OpCode) String() string {
+func (op opCode) String() string {
 	str := opCodeToString[op]
 	if len(str) == 0 {
 		return fmt.Sprintf("Missing opcode 0x%x", int(op))
@@ -363,7 +363,7 @@ func (op OpCode) String() string {
 	return str
 }
 
-var stringToOp = map[string]OpCode{
+var stringToOp = map[string]opCode{
 	"STOP":           STOP,
 	"ADD":            ADD,
 	"MUL":            MUL,
@@ -505,6 +505,6 @@ var stringToOp = map[string]OpCode{
 }
 
 // StringToOp finds the opcode whose name is stored in `str`.
-func StringToOp(str string) OpCode {
+func StringToOp(str string) opCode {
 	return stringToOp[str]
 }

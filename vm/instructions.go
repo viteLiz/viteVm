@@ -532,7 +532,7 @@ func makePush(size uint64, pushByteSize int) executionFunc {
 		}
 
 		integer := vm.intPool.get()
-		stack.push(integer.SetBytes(RightPadBytes(contract.code[startMin:endMin], pushByteSize)))
+		stack.push(integer.SetBytes(rightPadBytes(contract.code[startMin:endMin], pushByteSize)))
 
 		*pc += size
 		return nil, nil

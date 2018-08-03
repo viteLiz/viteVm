@@ -1,3 +1,6 @@
+/**
+Package vm implements the vite virtual machine
+*/
 package vm
 
 import (
@@ -28,7 +31,7 @@ type Transaction struct {
 type VM struct {
 	Transaction
 	VMConfig
-	StateDb database
+	StateDb Database
 
 	abort          int32
 	intPool        *intPool
@@ -49,7 +52,7 @@ var (
 	viteTokenTypeId = types.TokenTypeId{}
 )
 
-func canTransfer(db database, addr types.Address, tokenTypeId types.TokenTypeId, tokenAmount *big.Int, feeAmount *big.Int) bool {
+func canTransfer(db Database, addr types.Address, tokenTypeId types.TokenTypeId, tokenAmount *big.Int, feeAmount *big.Int) bool {
 	return tokenAmount.Cmp(db.GetBalance(addr, tokenTypeId)) <= 0 && feeAmount.Cmp(db.GetBalance(addr, viteTokenTypeId)) <= 0
 }
 
@@ -81,7 +84,7 @@ func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error)
 	} else {
 		// receive
 		// check depth, do nothing if reach the max depth
-		if vm.Depth > CallCreateDepth {
+		if vm.Depth > callCreateDepth {
 			// TODO refund?
 			return types.Address{}, quotaInit - quotaLeft, ErrDepth
 		}
@@ -102,7 +105,7 @@ func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error)
 		contract.SetCallCode(contractAddr, types.DataHash(vm.Data), vm.Data)
 		code, quotaLeft, err := run(vm, contract, quotaLeft)
 		if err == nil {
-			codeCost := uint64(len(code)) * ContractCodeGas
+			codeCost := uint64(len(code)) * contractCodeGas
 			quotaLeft, err = useQuota(quotaLeft, codeCost)
 			if err == nil {
 				vm.StateDb.SetContractCode(contractAddr, code)
@@ -146,7 +149,7 @@ func (vm *VM) Call() (quotaUsed uint64, err error) {
 		}
 		revertId := vm.StateDb.Snapshot()
 		vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
-		if vm.Depth > CallCreateDepth {
+		if vm.Depth > callCreateDepth {
 			return quotaInit - quotaLeft, ErrDepth
 		}
 		contract := NewContract(vm.From, vm.To, vm.TokenTypeId, vm.Amount, vm.Data)
@@ -186,7 +189,7 @@ func run(vm *VM, c *Contract, quota uint64) (ret []byte, quotaLeft uint64, err e
 	}()
 
 	var (
-		op   OpCode
+		op   opCode
 		mem  = newMemory()
 		st   = newStack()
 		pc   = uint64(0)

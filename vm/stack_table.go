@@ -10,8 +10,8 @@ func makeStackFunc(pop, push int) stackValidationFunc {
 			return err
 		}
 
-		if stack.len()+push-pop > int(StackLimit) {
-			return fmt.Errorf("stack limit reached %d (%d)", stack.len(), StackLimit)
+		if stack.len()+push-pop > int(stackLimit) {
+			return fmt.Errorf("stack limit reached %d (%d)", stack.len(), stackLimit)
 		}
 		return nil
 	}

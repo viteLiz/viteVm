@@ -42,8 +42,8 @@ func bigUint64(v *big.Int) (uint64, bool) {
 	return v.Uint64(), v.BitLen() > 64
 }
 
-// RightPadBytes zero-pads slice to the right up to length l.
-func RightPadBytes(slice []byte, l int) []byte {
+// rightPadBytes zero-pads slice to the right up to length l.
+func rightPadBytes(slice []byte, l int) []byte {
 	if l <= len(slice) {
 		return slice
 	}
@@ -54,8 +54,8 @@ func RightPadBytes(slice []byte, l int) []byte {
 	return padded
 }
 
-// LeftPadBytes zero-pads slice to the left up to length l.
-func LeftPadBytes(slice []byte, l int) []byte {
+// leftPadBytes zero-pads slice to the left up to length l.
+func leftPadBytes(slice []byte, l int) []byte {
 	if l <= len(slice) {
 		return slice
 	}
@@ -82,7 +82,7 @@ func getDataBig(data []byte, start *big.Int, size *big.Int) []byte {
 
 	s := BigMin(start, dlen)
 	e := BigMin(new(big.Int).Add(s, size), dlen)
-	return RightPadBytes(data[s.Uint64():e.Uint64()], int(size.Uint64()))
+	return rightPadBytes(data[s.Uint64():e.Uint64()], int(size.Uint64()))
 }
 
 func useQuota(quota uint64, cost uint64) (uint64, error) {

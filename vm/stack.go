@@ -10,7 +10,7 @@ type stack struct {
 }
 
 func newStack() *stack {
-	return &stack{data: make([]*big.Int, 0, StackLimit)}
+	return &stack{data: make([]*big.Int, 0, stackLimit)}
 }
 
 func (st *stack) push(d *big.Int) {

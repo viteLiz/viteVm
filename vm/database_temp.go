@@ -5,7 +5,7 @@ import (
 	"math/big"
 )
 
-type database interface {
+type Database interface {
 	GetBalance(addr types.Address, tokenTypeId types.TokenTypeId) *big.Int
 	SubBalance(addr types.Address, tokenTypeId types.TokenTypeId, amount *big.Int)
 	AddBalance(addr types.Address, tokenTypeId types.TokenTypeId, amount *big.Int)

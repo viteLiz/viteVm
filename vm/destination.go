@@ -36,7 +36,7 @@ func (d destinations) has(codehash types.Hash, code []byte, dest *big.Int) bool 
 		m = codeBitmap(code)
 		d[codehash] = m
 	}
-	return OpCode(code[udest]) == JUMPDEST && m.codeSegment(udest)
+	return opCode(code[udest]) == JUMPDEST && m.codeSegment(udest)
 }
 
 // codeBitmap collects data locations in code.
@@ -46,7 +46,7 @@ func codeBitmap(code []byte) bitvec {
 	// bitvector outside the bounds of the actual code.
 	bits := make(bitvec, len(code)/8+1+4)
 	for pc := uint64(0); pc < uint64(len(code)); {
-		op := OpCode(code[pc])
+		op := opCode(code[pc])
 
 		if op >= PUSH1 && op <= PUSH32 {
 			numbits := op - PUSH1 + 1
