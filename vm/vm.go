@@ -101,8 +101,8 @@ func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error)
 		vm.StateDb.AddBalance(contractAddr, vm.TokenTypeId, vm.Amount)
 
 		// init contract state and set contract code
-		contract := NewContract(vm.From, contractAddr, vm.TokenTypeId, vm.Amount, nil)
-		contract.SetCallCode(contractAddr, types.DataHash(vm.Data), vm.Data)
+		contract := newContract(vm.From, contractAddr, vm.TokenTypeId, vm.Amount, nil)
+		contract.setCallCode(contractAddr, types.DataHash(vm.Data), vm.Data)
 		code, quotaLeft, err := run(vm, contract, quotaLeft)
 		if err == nil {
 			codeCost := uint64(len(code)) * contractCodeGas
@@ -152,8 +152,8 @@ func (vm *VM) Call() (quotaUsed uint64, err error) {
 		if vm.Depth > callCreateDepth {
 			return quotaInit - quotaLeft, ErrDepth
 		}
-		contract := NewContract(vm.From, vm.To, vm.TokenTypeId, vm.Amount, vm.Data)
-		contract.SetCallCode(vm.To, vm.StateDb.GetContractCodeHash(vm.To), vm.StateDb.GetContractCode(vm.To))
+		contract := newContract(vm.From, vm.To, vm.TokenTypeId, vm.Amount, vm.Data)
+		contract.setCallCode(vm.To, vm.StateDb.GetContractCodeHash(vm.To), vm.StateDb.GetContractCode(vm.To))
 		_, quotaLeft, err := run(vm, contract, quotaLeft)
 		if err == nil {
 			return quotaInit - quotaLeft, nil
@@ -177,7 +177,7 @@ func (vm *VM) Call() (quotaUsed uint64, err error) {
 	}
 }
 
-func run(vm *VM, c *Contract, quota uint64) (ret []byte, quotaLeft uint64, err error) {
+func run(vm *VM, c *contract, quota uint64) (ret []byte, quotaLeft uint64, err error) {
 	if len(c.code) == 0 {
 		return nil, quota, nil
 	}
@@ -198,7 +198,7 @@ func run(vm *VM, c *Contract, quota uint64) (ret []byte, quotaLeft uint64, err e
 
 	for atomic.LoadInt32(&vm.abort) == 0 {
 		currentPc := pc
-		op = c.GetOp(pc)
+		op = c.getOp(pc)
 		operation := vm.instructionSet[op]
 
 		if !operation.valid {
@@ -237,7 +237,7 @@ func run(vm *VM, c *Contract, quota uint64) (ret []byte, quotaLeft uint64, err e
 
 		if vm.Debug {
 			fmt.Println("--------------------")
-			fmt.Printf("op: %v, pc: %v\nstack: [%v]\nmemory: [%v]\nstorage: [%v]\n", opCodeToString[op], currentPc, st.toString(), mem.toString(), vm.StateDb.GetStatesString(c.self))
+			fmt.Printf("op: %v, pc: %v\nstack: [%v]\nmemory: [%v]\nstorage: [%v]\n", opCodeToString[op], currentPc, st.string(), mem.string(), vm.StateDb.GetStatesString(c.address))
 			fmt.Println("--------------------")
 		}
 

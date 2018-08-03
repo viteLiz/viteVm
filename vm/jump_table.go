@@ -5,8 +5,8 @@ import (
 )
 
 type (
-	executionFunc       func(pc *uint64, vm *VM, contract *Contract, memory *memory, stack *stack) ([]byte, error)
-	gasFunc             func(*VM, *Contract, *stack, *memory, uint64) (uint64, error) // last parameter is the requested memory size as a uint64
+	executionFunc       func(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error)
+	gasFunc             func(*VM, *contract, *stack, *memory, uint64) (uint64, error) // last parameter is the requested memory size as a uint64
 	stackValidationFunc func(*stack) error
 	memorySizeFunc      func(*stack) *big.Int
 )

@@ -5,9 +5,9 @@ import (
 	"math/big"
 )
 
-type Contract struct {
+type contract struct {
 	caller    types.Address
-	self      types.Address
+	address   types.Address
 	jumpdests destinations
 	code      []byte
 	codeHash  types.Hash
@@ -17,15 +17,15 @@ type Contract struct {
 	amount    *big.Int
 }
 
-func NewContract(caller types.Address, object types.Address, tokenId types.TokenTypeId, amount *big.Int, data []byte) *Contract {
-	return &Contract{caller: caller, self: object, tokenId: tokenId, amount: amount, data: data, jumpdests: make(destinations)}
+func newContract(caller types.Address, address types.Address, tokenId types.TokenTypeId, amount *big.Int, data []byte) *contract {
+	return &contract{caller: caller, address: address, tokenId: tokenId, amount: amount, data: data, jumpdests: make(destinations)}
 }
 
-func (c *Contract) GetOp(n uint64) opCode {
-	return opCode(c.GetByte(n))
+func (c *contract) getOp(n uint64) opCode {
+	return opCode(c.getByte(n))
 }
 
-func (c *Contract) GetByte(n uint64) byte {
+func (c *contract) getByte(n uint64) byte {
 	if n < uint64(len(c.code)) {
 		return c.code[n]
 	}
@@ -33,15 +33,7 @@ func (c *Contract) GetByte(n uint64) byte {
 	return 0
 }
 
-func (c *Contract) Caller() types.Address {
-	return c.caller
-}
-
-func (c *Contract) Address() types.Address {
-	return c.self
-}
-
-func (c *Contract) SetCallCode(addr types.Address, hash types.Hash, code []byte) {
+func (c *contract) setCallCode(addr types.Address, hash types.Hash, code []byte) {
 	c.code = code
 	c.codeHash = hash
 	c.codeAddr = addr

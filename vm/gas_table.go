@@ -40,12 +40,12 @@ func memoryGasCost(mem *memory, newMemSize uint64) (uint64, error) {
 }
 
 func constGasFunc(gas uint64) gasFunc {
-	return func(vm *VM, contrac *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+	return func(vm *VM, contrac *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 		return gas, nil
 	}
 }
 
-func gasExp(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasExp(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	expByteLen := uint64((stack.back(1).BitLen() + 7) / 8)
 
 	var (
@@ -58,7 +58,7 @@ func gasExp(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize ui
 	return gas, nil
 }
 
-func gasBlake2b(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasBlake2b(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	var overflow bool
 	gas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
@@ -82,7 +82,7 @@ func gasBlake2b(vm *VM, contract *Contract, stack *stack, mem *memory, memorySiz
 	return gas, nil
 }
 
-func gasCallDataCopy(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasCallDataCopy(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	gas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
 		return 0, err
@@ -108,7 +108,7 @@ func gasCallDataCopy(vm *VM, contract *Contract, stack *stack, mem *memory, memo
 	return gas, nil
 }
 
-func gasCodeCopy(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasCodeCopy(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	gas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
 		return 0, err
@@ -132,7 +132,7 @@ func gasCodeCopy(vm *VM, contract *Contract, stack *stack, mem *memory, memorySi
 	return gas, nil
 }
 
-func gasMLoad(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasMLoad(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	var overflow bool
 	gas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
@@ -144,7 +144,7 @@ func gasMLoad(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize 
 	return gas, nil
 }
 
-func gasMStore(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasMStore(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	var overflow bool
 	gas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
@@ -156,7 +156,7 @@ func gasMStore(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize
 	return gas, nil
 }
 
-func gasMStore8(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasMStore8(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	var overflow bool
 	gas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
@@ -168,11 +168,11 @@ func gasMStore8(vm *VM, contract *Contract, stack *stack, mem *memory, memorySiz
 	return gas, nil
 }
 
-func gasSStore(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasSStore(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	var (
 		y    = stack.back(1)
 		x, _ = types.BigToHash(stack.back(0))
-		val  = vm.StateDb.GetState(contract.Address(), x)
+		val  = vm.StateDb.GetState(contract.address, x)
 	)
 	if val == (types.Hash{}) && y.Sign() != 0 {
 		return sstoreSetGas, nil
@@ -184,20 +184,20 @@ func gasSStore(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize
 	}
 }
 
-func gasPush(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasPush(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	return fastestStepGas, nil
 }
 
-func gasDup(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasDup(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	return fastestStepGas, nil
 }
 
-func gasSwap(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasSwap(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	return fastestStepGas, nil
 }
 
 func makeGasLog(n uint64) gasFunc {
-	return func(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+	return func(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 		requestedSize, overflow := bigUint64(stack.back(1))
 		if overflow {
 			return 0, errGasUintOverflow
@@ -226,11 +226,11 @@ func makeGasLog(n uint64) gasFunc {
 	}
 }
 
-func gasReturn(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasReturn(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	return memoryGasCost(mem, memorySize)
 }
 
-func gasRevert(vm *VM, contract *Contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+func gasRevert(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	return memoryGasCost(mem, memorySize)
 }
 

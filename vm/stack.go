@@ -51,7 +51,7 @@ func (st *stack) swap(n int) {
 	st.data[st.len()-n], st.data[st.len()-1] = st.data[st.len()-1], st.data[st.len()-n]
 }
 
-func (st *stack) toString() string {
+func (st *stack) string() string {
 	var result string
 	if len(st.data) > 0 {
 		for i, val := range st.data {
