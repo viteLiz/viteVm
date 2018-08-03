@@ -28,6 +28,13 @@ type Transaction struct {
 	SnapshotHeight    *big.Int
 }
 
+type Log struct {
+	Address types.Address
+	Topics  []types.Hash
+	Data    []byte
+	Height  uint64
+}
+
 type VM struct {
 	Transaction
 	VMConfig
@@ -36,10 +43,13 @@ type VM struct {
 	abort          int32
 	intPool        *intPool
 	instructionSet [256]operation
+	quotaReturn    uint64
+	logs           []*Log
+	txs            []*Transaction
 }
 
 func NewVM(tx Transaction) *VM {
-	vm := &VM{Transaction: tx, instructionSet: simpleInstructionSet}
+	vm := &VM{Transaction: tx, instructionSet: simpleInstructionSet, logs: make([]*Log, 0), txs: make([]*Transaction, 0)}
 	return vm
 }
 
@@ -56,18 +66,18 @@ func canTransfer(db Database, addr types.Address, tokenTypeId types.TokenTypeId,
 	return tokenAmount.Cmp(db.GetBalance(addr, tokenTypeId)) <= 0 && feeAmount.Cmp(db.GetBalance(addr, viteTokenTypeId)) <= 0
 }
 
-func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error) {
+func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, txs []*Transaction, err error) {
 	// check can make transaction
 	// TODO calculate quota
 	quotaInit := defaultQuota
 	quotaLeft := quotaInit
 	cost, err := intrinsicGasCost(vm.Data, true)
 	if err != nil {
-		return types.Address{}, 0, err
+		return types.Address{}, 0, vm.logs, vm.txs, err
 	}
 	quotaLeft, err = useQuota(quotaLeft, cost)
 	if err != nil {
-		return types.Address{}, 0, err
+		return types.Address{}, 0, vm.logs, vm.txs, err
 	}
 
 	if vm.TxType == 1 {
@@ -75,23 +85,23 @@ func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error)
 		// TODO calculate service fee for create contract, use 0 for test
 		createFee := big0
 		if !canTransfer(vm.StateDb, vm.From, vm.TokenTypeId, vm.Amount, createFee) {
-			return types.Address{}, quotaInit - quotaLeft, ErrInsufficientBalance
+			return types.Address{}, quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrInsufficientBalance
 		}
 		// sub balance and service fee
 		vm.StateDb.SubBalance(vm.From, vm.TokenTypeId, vm.Amount)
 		vm.StateDb.SubBalance(vm.From, viteTokenTypeId, createFee)
-		return types.Address{}, quotaInit - quotaLeft, nil
+		return types.Address{}, quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
 	} else {
 		// receive
 		// check depth, do nothing if reach the max depth
 		if vm.Depth > callCreateDepth {
-			// TODO refund?
-			return types.Address{}, quotaInit - quotaLeft, ErrDepth
+			// TODO quotaReturn?
+			return types.Address{}, quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrDepth
 		}
 		// create a random address
 		contractAddr, _, err := types.CreateAddress()
 		if err != nil || vm.StateDb.IsExistAddress(contractAddr) {
-			return types.Address{}, quotaInit - quotaLeft, ErrContractAddressCreationFail
+			return types.Address{}, quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrContractAddressCreationFail
 		}
 
 		errorRevertId := vm.StateDb.Snapshot()
@@ -109,39 +119,39 @@ func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error)
 			quotaLeft, err = useQuota(quotaLeft, codeCost)
 			if err == nil {
 				vm.StateDb.SetContractCode(contractAddr, code)
-				return contractAddr, quotaInit - quotaLeft, nil
+				return contractAddr, quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
 			}
 		}
 
 		// revert if error
 		vm.StateDb.RevertToSnapShot(errorRevertId)
 		if err != ErrOutOfQuota && vm.Amount.Cmp(big0) > 0 {
-			// TODO how to refund
+			// TODO how to quotaReturn
 		}
-		return types.Address{}, quotaInit - quotaLeft, err
+		return types.Address{}, quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, err
 	}
 }
 
-func (vm *VM) Call() (quotaUsed uint64, err error) {
+func (vm *VM) Call() (quota uint64, logs []*Log, txs []*Transaction, err error) {
 	// TODO calculate quota
 	quotaInit := defaultQuota
 	quotaLeft := quotaInit
 	cost, err := intrinsicGasCost(vm.Data, false)
 	if err != nil {
-		return 0, err
+		return 0, vm.logs, vm.txs, err
 	}
 	quotaLeft, err = useQuota(quotaLeft, cost)
 	if err != nil {
-		return 0, err
+		return 0, vm.logs, vm.txs, err
 	}
 
 	if vm.TxType == 1 {
 		// send
 		if !canTransfer(vm.StateDb, vm.From, vm.TokenTypeId, vm.Amount, big0) {
-			return quotaInit - quotaLeft, ErrInsufficientBalance
+			return quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrInsufficientBalance
 		}
 		vm.StateDb.SubBalance(vm.From, vm.TokenTypeId, vm.Amount)
-		return quotaInit - quotaLeft, nil
+		return quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
 	} else {
 		// receive
 		if !vm.StateDb.IsExistAddress(vm.To) {
@@ -150,18 +160,18 @@ func (vm *VM) Call() (quotaUsed uint64, err error) {
 		revertId := vm.StateDb.Snapshot()
 		vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
 		if vm.Depth > callCreateDepth {
-			return quotaInit - quotaLeft, ErrDepth
+			return quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrDepth
 		}
 		contract := newContract(vm.From, vm.To, vm.TokenTypeId, vm.Amount, vm.Data)
 		contract.setCallCode(vm.To, vm.StateDb.GetContractCodeHash(vm.To), vm.StateDb.GetContractCode(vm.To))
 		_, quotaLeft, err := run(vm, contract, quotaLeft)
 		if err == nil {
-			return quotaInit - quotaLeft, nil
+			return quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
 		} else {
 			vm.StateDb.RevertToSnapShot(revertId)
 			if err != ErrOutOfQuota && vm.Amount.Cmp(big0) > 0 {
 				vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
-				vm.StateDb.AddTransaction(&Transaction{
+				vm.txs = append(vm.txs, &Transaction{
 					From:              vm.To,
 					To:                vm.From,
 					TxType:            1,
@@ -172,7 +182,7 @@ func (vm *VM) Call() (quotaUsed uint64, err error) {
 					SnapshotHeight:    vm.SnapshotHeight,
 				})
 			}
-			return quotaInit - quotaLeft, err
+			return quotaUsed(quotaInit, quotaLeft, vm.quotaReturn), vm.logs, vm.txs, err
 		}
 	}
 }
@@ -243,14 +253,24 @@ func run(vm *VM, c *contract, quota uint64) (ret []byte, quotaLeft uint64, err e
 
 		switch {
 		case err != nil:
+			vm.quotaReturn = 0
+			vm.logs = vm.logs[:0]
+			vm.txs = vm.txs[:0]
 			return nil, quota, err
 		case operation.halts:
 			return res, quota, nil
 		case operation.reverts:
+			vm.quotaReturn = 0
+			vm.logs = vm.logs[:0]
+			vm.txs = vm.txs[:0]
 			return res, quota, ErrExecutionReverted
 		case !operation.jumps:
 			pc++
 		}
 	}
 	return nil, quota, nil
+}
+
+func quotaUsed(quotaInit, quotaLeft, quotaReturn uint64) uint64 {
+	return quotaInit - quotaLeft + min(quotaReturn, (quotaInit-quotaLeft)/2)
 }

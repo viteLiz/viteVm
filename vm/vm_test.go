@@ -30,7 +30,8 @@ func TestVM_CreateSend(t *testing.T) {
 	inputdata, _ := hex.DecodeString("608060405260008055348015601357600080fd5b5060358060216000396000f3006080604052600080fd00a165627a7a723058207c31c74808fe0f95820eb3c48eac8e3e10ef27058dc6ca159b547fccde9290790029")
 	vm := NewVM(Transaction{Depth: 1, TxType: 1, TokenTypeId: types.CreateTokenTypeId(), Amount: big.NewInt(10), Data: inputdata})
 	vm.StateDb = &testDatabase{}
-	addr, quotaUsed, err := vm.Create()
+	vm.Debug = true
+	addr, quotaUsed, _, _, err := vm.Create()
 	empthAddress := types.Address{}
 	if addr != empthAddress || quotaUsed != 58336 || err != nil {
 		t.Fatalf("send create fail, %v %v %v", addr, quotaUsed, err)
@@ -42,7 +43,7 @@ func TestVM_CreateReceive(t *testing.T) {
 	vm := NewVM(Transaction{Depth: 1, TxType: 2, TokenTypeId: types.CreateTokenTypeId(), Amount: big.NewInt(0), Data: inputdata})
 	vm.StateDb = &testDatabase{}
 	vm.Debug = true
-	addr, quotaUsed, err := vm.Create()
+	addr, quotaUsed, _, _, err := vm.Create()
 	empthAddress := types.Address{}
 	if addr == empthAddress || quotaUsed != 74008 || err != nil {
 		t.Fatalf("send create fail, %v %v %v", addr, quotaUsed, err)

@@ -92,3 +92,10 @@ func useQuota(quota uint64, cost uint64) (uint64, error) {
 
 	return quota - cost, nil
 }
+
+func min(x, y uint64) uint64 {
+	if x < y {
+		return x
+	}
+	return y
+}

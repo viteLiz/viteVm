@@ -25,18 +25,7 @@ type Database interface {
 	SetState(addr types.Address, loc types.Hash, value types.Hash)
 	GetStatesString(addr types.Address) string
 
-	AddRefund(refund uint64)
-	AddLog(log *Log)
-	AddTransaction(tx *Transaction)
-
 	GetHash(num uint64) types.Hash
-}
-
-type Log struct {
-	Address types.Address `json:"address" gencodec:"required"`
-	Topics  []types.Hash  `json:"topics" gencodec:"required"`
-	Data    []byte        `json:"data" gencodec:"required"`
-	Height  uint64        `json:"height"`
 }
 
 type testDatabase struct{}
@@ -58,7 +47,4 @@ func (db *testDatabase) GetContractCodeHash(addr types.Address) types.Hash      
 func (db *testDatabase) GetState(addr types.Address, loc types.Hash) types.Hash        { return types.Hash{} }
 func (db *testDatabase) SetState(addr types.Address, loc types.Hash, value types.Hash) {}
 func (db *testDatabase) GetStatesString(addr types.Address) string                     { return "" }
-func (db *testDatabase) AddRefund(refund uint64)                                       {}
-func (db *testDatabase) AddLog(log *Log)                                               {}
-func (db *testDatabase) AddTransaction(tx *Transaction)                                {}
 func (db *testDatabase) GetHash(num uint64) types.Hash                                 { return types.Hash{} }

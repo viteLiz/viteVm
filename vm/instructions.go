@@ -566,7 +566,7 @@ func makeLog(size int) executionFunc {
 		}
 
 		d := memory.get(mStart.Int64(), mSize.Int64())
-		vm.StateDb.AddLog(&Log{
+		vm.logs = append(vm.logs, &Log{
 			Address: contract.address,
 			Topics:  topics,
 			Data:    d,

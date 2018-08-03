@@ -177,7 +177,7 @@ func gasSStore(vm *VM, contract *contract, stack *stack, mem *memory, memorySize
 	if val == (types.Hash{}) && y.Sign() != 0 {
 		return sstoreSetGas, nil
 	} else if val != (types.Hash{}) && y.Sign() == 0 {
-		vm.StateDb.AddRefund(sstoreRefundGas)
+		vm.quotaReturn = vm.quotaReturn + sstoreRefundGas
 		return sstoreClearGas, nil
 	} else {
 		return sstoreResetGas, nil
