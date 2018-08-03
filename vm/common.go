@@ -85,7 +85,6 @@ func getDataBig(data []byte, start *big.Int, size *big.Int) []byte {
 	return RightPadBytes(data[s.Uint64():e.Uint64()], int(size.Uint64()))
 }
 
-// TODO optimize
 func useQuota(quota uint64, cost uint64) (uint64, error) {
 	if quota < cost {
 		return 0, ErrOutOfQuota

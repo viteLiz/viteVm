@@ -11,10 +11,14 @@ type VMConfig struct {
 	Debug bool
 }
 
-type Context struct {
-	Depth    int
-	TxType   int
-	ReadOnly bool
+type Transaction struct {
+	From        types.Address
+	To          types.Address
+	TxType      int
+	TokenTypeId types.TokenTypeId
+	Amount      *big.Int
+	Data        []byte
+	Depth       uint64
 
 	SnapshotTimestamp *big.Int
 	AccountHeight     *big.Int
@@ -22,26 +26,22 @@ type Context struct {
 }
 
 type VM struct {
-	Context
+	Transaction
 	VMConfig
 	StateDb database
 
 	abort          int32
-	returnData     []byte
 	intPool        *intPool
 	instructionSet [256]operation
 }
 
-func NewVM(ctx Context) *VM {
-	vm := &VM{Context: ctx, instructionSet: simpleInstructionSet}
+func NewVM(tx Transaction) *VM {
+	vm := &VM{Transaction: tx, instructionSet: simpleInstructionSet}
 	return vm
 }
 
-type SendTransaction struct {
-	To          types.Address
-	TokenTypeId types.TokenTypeId
-	Amount      *big.Int
-	Data        []byte
+func (vm *VM) Cancel() {
+	atomic.StoreInt32(&vm.abort, 1)
 }
 
 var (
@@ -53,11 +53,12 @@ func canTransfer(db database, addr types.Address, tokenTypeId types.TokenTypeId,
 	return tokenAmount.Cmp(db.GetBalance(addr, tokenTypeId)) <= 0 && feeAmount.Cmp(db.GetBalance(addr, viteTokenTypeId)) <= 0
 }
 
-func (vm *VM) Create(from types.Address, data []byte, tokenTypeId types.TokenTypeId, amount *big.Int) (contractAddr types.Address, quotaUsed uint64, err error) {
+func (vm *VM) Create() (contractAddr types.Address, quotaUsed uint64, err error) {
+	// check can make transaction
 	// TODO calculate quota
 	quotaInit := defaultQuota
 	quotaLeft := quotaInit
-	cost, err := intrinsicGasCost(data, true)
+	cost, err := intrinsicGasCost(vm.Data, true)
 	if err != nil {
 		return types.Address{}, 0, err
 	}
@@ -68,30 +69,38 @@ func (vm *VM) Create(from types.Address, data []byte, tokenTypeId types.TokenTyp
 
 	if vm.TxType == 1 {
 		// send
-		// TODO calculate create fee
+		// TODO calculate service fee for create contract, use 0 for test
 		createFee := big0
-		if !canTransfer(vm.StateDb, from, tokenTypeId, amount, createFee) {
+		if !canTransfer(vm.StateDb, vm.From, vm.TokenTypeId, vm.Amount, createFee) {
 			return types.Address{}, quotaInit - quotaLeft, ErrInsufficientBalance
 		}
-		// sub balance and create cost
-		vm.StateDb.SubBalance(from, tokenTypeId, amount)
-		vm.StateDb.SubBalance(from, viteTokenTypeId, createFee)
+		// sub balance and service fee
+		vm.StateDb.SubBalance(vm.From, vm.TokenTypeId, vm.Amount)
+		vm.StateDb.SubBalance(vm.From, viteTokenTypeId, createFee)
 		return types.Address{}, quotaInit - quotaLeft, nil
 	} else {
 		// receive
+		// check depth, do nothing if reach the max depth
+		if vm.Depth > CallCreateDepth {
+			// TODO refund?
+			return types.Address{}, quotaInit - quotaLeft, ErrDepth
+		}
+		// create a random address
 		contractAddr, _, err := types.CreateAddress()
 		if err != nil || vm.StateDb.IsExistAddress(contractAddr) {
 			return types.Address{}, quotaInit - quotaLeft, ErrContractAddressCreationFail
 		}
 
 		errorRevertId := vm.StateDb.Snapshot()
+
+		// create contract account
 		vm.StateDb.CreateAccount(contractAddr)
-		vm.StateDb.AddBalance(contractAddr, tokenTypeId, amount)
-		revertId := vm.StateDb.Snapshot()
-		contract := NewContract(from, contractAddr, tokenTypeId, amount, quotaLeft, nil)
-		contract.SetCallCode(contractAddr, types.DataHash(data), data)
-		code, err := run(vm, contract, nil)
-		quotaLeft = contract.quotaLeft
+		vm.StateDb.AddBalance(contractAddr, vm.TokenTypeId, vm.Amount)
+
+		// init contract state and set contract code
+		contract := NewContract(vm.From, contractAddr, vm.TokenTypeId, vm.Amount, nil)
+		contract.SetCallCode(contractAddr, types.DataHash(vm.Data), vm.Data)
+		code, quotaLeft, err := run(vm, contract, quotaLeft)
 		if err == nil {
 			codeCost := uint64(len(code)) * ContractCodeGas
 			quotaLeft, err = useQuota(quotaLeft, codeCost)
@@ -100,142 +109,145 @@ func (vm *VM) Create(from types.Address, data []byte, tokenTypeId types.TokenTyp
 				return contractAddr, quotaInit - quotaLeft, nil
 			}
 		}
-		if err == errExecutionReverted {
-			vm.StateDb.RevertToSnapShot(revertId)
-			return types.Address{}, quotaInit - quotaLeft, err
-		} else {
-			vm.StateDb.RevertToSnapShot(errorRevertId)
-			return types.Address{}, quotaInit - quotaLeft, err
+
+		// revert if error
+		vm.StateDb.RevertToSnapShot(errorRevertId)
+		if err != ErrOutOfQuota && vm.Amount.Cmp(big0) > 0 {
+			// TODO how to refund
 		}
+		return types.Address{}, quotaInit - quotaLeft, err
 	}
 }
 
-func (vm *VM) Call(from types.Address, to types.Address, data []byte, tokenTypeId types.TokenTypeId, amount *big.Int) (sendList []SendTransaction, quotaUsed uint64, err error) {
+func (vm *VM) Call() (quotaUsed uint64, err error) {
 	// TODO calculate quota
 	quotaInit := defaultQuota
 	quotaLeft := quotaInit
-	cost, err := intrinsicGasCost(data, false)
+	cost, err := intrinsicGasCost(vm.Data, false)
 	if err != nil {
-		return nil, 0, err
+		return 0, err
 	}
 	quotaLeft, err = useQuota(quotaLeft, cost)
 	if err != nil {
-		return nil, 0, err
+		return 0, err
 	}
 
 	if vm.TxType == 1 {
 		// send
-		if !canTransfer(vm.StateDb, from, tokenTypeId, amount, big0) {
-			return nil, quotaInit - quotaLeft, ErrInsufficientBalance
+		if !canTransfer(vm.StateDb, vm.From, vm.TokenTypeId, vm.Amount, big0) {
+			return quotaInit - quotaLeft, ErrInsufficientBalance
 		}
-		// sub balance
-		vm.StateDb.SubBalance(from, tokenTypeId, amount)
-		return nil, quotaInit - quotaLeft, nil
+		vm.StateDb.SubBalance(vm.From, vm.TokenTypeId, vm.Amount)
+		return quotaInit - quotaLeft, nil
 	} else {
 		// receive
-		errorRevertId := vm.StateDb.Snapshot()
-		if !vm.StateDb.IsExistAddress(to) {
-			vm.StateDb.CreateAccount(to)
+		if !vm.StateDb.IsExistAddress(vm.To) {
+			vm.StateDb.CreateAccount(vm.To)
 		}
-		vm.StateDb.AddBalance(to, tokenTypeId, amount)
 		revertId := vm.StateDb.Snapshot()
-		contract := NewContract(from, to, tokenTypeId, amount, quotaLeft, nil)
-		contract.SetCallCode(to, vm.StateDb.GetContractCodeHash(to), vm.StateDb.GetContractCode(to))
-		_, err := run(vm, contract, data)
-		quotaLeft = contract.quotaLeft
+		vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
+		if vm.Depth > CallCreateDepth {
+			return quotaInit - quotaLeft, ErrDepth
+		}
+		contract := NewContract(vm.From, vm.To, vm.TokenTypeId, vm.Amount, vm.Data)
+		contract.SetCallCode(vm.To, vm.StateDb.GetContractCodeHash(vm.To), vm.StateDb.GetContractCode(vm.To))
+		_, quotaLeft, err := run(vm, contract, quotaLeft)
 		if err == nil {
-			// TODO return sendList
-			return nil, quotaInit - quotaLeft, nil
-		} else if err == errExecutionReverted {
-			vm.StateDb.RevertToSnapShot(revertId)
-			return nil, quotaInit - quotaLeft, err
+			return quotaInit - quotaLeft, nil
 		} else {
-			vm.StateDb.RevertToSnapShot(errorRevertId)
-			return nil, quotaInit - quotaLeft, err
+			vm.StateDb.RevertToSnapShot(revertId)
+			if err != ErrOutOfQuota && vm.Amount.Cmp(big0) > 0 {
+				vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
+				vm.StateDb.AddTransaction(&Transaction{
+					From:              vm.To,
+					To:                vm.From,
+					TxType:            1,
+					TokenTypeId:       vm.TokenTypeId,
+					Amount:            vm.Amount,
+					Depth:             vm.Depth + 1,
+					SnapshotTimestamp: vm.SnapshotTimestamp,
+					SnapshotHeight:    vm.SnapshotHeight,
+				})
+			}
+			return quotaInit - quotaLeft, err
 		}
 	}
 }
 
-func (vm *VM) getHash(num uint64) types.Hash {
-	// TODO get snapshot block hash
-	return types.Hash{}
-}
-
-func run(vm *VM, contract *Contract, data []byte) (ret []byte, err error) {
-	if len(contract.code) == 0 {
-		return nil, nil
+func run(vm *VM, c *Contract, quota uint64) (ret []byte, quotaLeft uint64, err error) {
+	if len(c.code) == 0 {
+		return nil, quota, nil
 	}
 
-	if vm.intPool == nil {
-		vm.intPool = poolOfIntPools.get()
-		defer func() {
-			poolOfIntPools.put(vm.intPool)
-			vm.intPool = nil
-		}()
-	}
-
-	// TODO TBD
-	vm.Depth++
-	defer func() { vm.Depth-- }()
-
-	vm.returnData = nil
+	vm.intPool = poolOfIntPools.get()
+	defer func() {
+		poolOfIntPools.put(vm.intPool)
+		vm.intPool = nil
+	}()
 
 	var (
-		op    OpCode
-		mem   = newMemory()
-		stack = newStack()
-		pc    = uint64(0)
-		cost  uint64
+		op   OpCode
+		mem  = newMemory()
+		st   = newStack()
+		pc   = uint64(0)
+		cost uint64
 	)
-	contract.data = data
 
 	for atomic.LoadInt32(&vm.abort) == 0 {
 		currentPc := pc
-		op = contract.GetOp(pc)
+		op = c.GetOp(pc)
 		operation := vm.instructionSet[op]
+
 		if !operation.valid {
-			return nil, fmt.Errorf("invalid opcode 0x%x", int(op))
+			return nil, quota, fmt.Errorf("invalid opcode 0x%x", int(op))
 		}
-		if err := operation.validateStack(stack); err != nil {
-			return nil, err
+
+		if err := operation.validateStack(st); err != nil {
+			return nil, quota, err
 		}
 
 		var memorySize uint64
 		if operation.memorySize != nil {
-			memSize, overflow := bigUint64(operation.memorySize(stack))
+			memSize, overflow := bigUint64(operation.memorySize(st))
 			if overflow {
-				return nil, errGasUintOverflow
+				return nil, quota, errGasUintOverflow
 			}
 			if memorySize, overflow = SafeMul(toWordSize(memSize), 32); overflow {
-				return nil, errGasUintOverflow
+				return nil, quota, errGasUintOverflow
 			}
 		}
-		cost, err = operation.gasCost(vm, contract, stack, mem, memorySize)
-		if err != nil || !contract.UseQuota(cost) {
-			return nil, ErrOutOfQuota
+
+		cost, err = operation.gasCost(vm, c, st, mem, memorySize)
+		if err != nil {
+			return nil, quota, err
 		}
+		quota, err = useQuota(quota, cost)
+		if err != nil {
+			return nil, quota, err
+		}
+
 		if memorySize > 0 {
 			mem.resize(memorySize)
 		}
 
-		res, err := operation.execute(&pc, vm, contract, mem, stack)
+		res, err := operation.execute(&pc, vm, c, mem, st)
 
 		if vm.Debug {
 			fmt.Println("--------------------")
-			fmt.Printf("op: %v, pc: %v\nstack: [%v]\nmemory: [%v]\n", opCodeToString[op], currentPc, stack.ToString(), mem.toString())
+			fmt.Printf("op: %v, pc: %v\nstack: [%v]\nmemory: [%v]\nstorage: [%v]\n", opCodeToString[op], currentPc, st.toString(), mem.toString(), vm.StateDb.GetStatesString(c.self))
 			fmt.Println("--------------------")
 		}
 
 		switch {
 		case err != nil:
-			return nil, err
+			return nil, quota, err
 		case operation.halts:
-			return res, nil
+			return res, quota, nil
 		case operation.reverts:
-			return res, errExecutionReverted
+			return res, quota, ErrExecutionReverted
 		case !operation.jumps:
 			pc++
 		}
 	}
-	return nil, nil
+	return nil, quota, nil
 }

@@ -5,7 +5,7 @@ import (
 )
 
 func makeStackFunc(pop, push int) stackValidationFunc {
-	return func(stack *Stack) error {
+	return func(stack *stack) error {
 		if err := stack.require(pop); err != nil {
 			return err
 		}

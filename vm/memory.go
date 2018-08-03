@@ -6,29 +6,29 @@ import (
 	"strconv"
 )
 
-type Memory struct {
+type memory struct {
 	store       []byte
 	lastGasCost uint64
 }
 
-func newMemory() *Memory {
-	return &Memory{}
+func newMemory() *memory {
+	return &memory{}
 }
 
 // resize resizes the memory to size
-func (m *Memory) resize(size uint64) {
+func (m *memory) resize(size uint64) {
 	if uint64(m.len()) < size {
 		m.store = append(m.store, make([]byte, size-uint64(m.len()))...)
 	}
 }
 
 // len returns the length of the backing slice
-func (m *Memory) len() int {
+func (m *memory) len() int {
 	return len(m.store)
 }
 
 // get returns offset + size as a new slice
-func (m *Memory) get(offset, size int64) (cpy []byte) {
+func (m *memory) get(offset, size int64) (cpy []byte) {
 	if size == 0 {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (m *Memory) get(offset, size int64) (cpy []byte) {
 }
 
 // getPtr returns the offset + size
-func (m *Memory) getPtr(offset, size int64) []byte {
+func (m *memory) getPtr(offset, size int64) []byte {
 	if size == 0 {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (m *Memory) getPtr(offset, size int64) []byte {
 }
 
 // set sets offset + size to amount
-func (m *Memory) set(offset, size uint64, value []byte) {
+func (m *memory) set(offset, size uint64, value []byte) {
 	// It's possible the offset is greater than 0 and size equals 0. This is because
 	// the calcMemSize (common.go) could potentially return 0 when size is zero (NO-OP)
 	if size > 0 {
@@ -72,7 +72,7 @@ func (m *Memory) set(offset, size uint64, value []byte) {
 
 // set32 sets the 32 bytes starting at offset to the amount of val, left-padded with zeroes to
 // 32 bytes.
-func (m *Memory) set32(offset uint64, val *big.Int) {
+func (m *memory) set32(offset uint64, val *big.Int) {
 	// length of store may never be less than offset + size.
 	// The store should be resized PRIOR to setting the memory
 	if offset+32 > uint64(len(m.store)) {
@@ -84,7 +84,7 @@ func (m *Memory) set32(offset uint64, val *big.Int) {
 	ReadBits(val, m.store[offset:offset+32])
 }
 
-func (m *Memory) toString() string {
+func (m *memory) toString() string {
 	var result string
 	if len(m.store) > 0 {
 		addr := 0

@@ -29,8 +29,8 @@ const (
 	JumpdestGas     uint64 = 1     // Jumpdest gas cost.
 	//EpochDuration    uint64 = 30000 // Duration between proof-of-work epochs.
 	//CallGas          uint64 = 40    // Once per CALL operation & message call transaction.
-	ContractCodeGas uint64 = 200 // Per byte in contract code
-	//CallCreateDepth uint64 = 1024 // Maximum Depth of call/create stack.
+	ContractCodeGas uint64 = 200  // Per byte in contract code
+	CallCreateDepth uint64 = 1024 // Maximum Depth of call/create stack.
 	//ExpGas           uint64 = 10    // Once per EXP instruction
 	CopyGas    uint64 = 3    //
 	StackLimit uint64 = 1024 // Maximum size of VM stack allowed.

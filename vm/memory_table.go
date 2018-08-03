@@ -2,39 +2,39 @@ package vm
 
 import "math/big"
 
-func memoryBlake2b(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), stack.Back(1))
+func memoryBlake2b(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), stack.back(1))
 }
 
-func memoryCallDataCopy(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), stack.Back(2))
+func memoryCallDataCopy(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), stack.back(2))
 }
 
-func memoryCodeCopy(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), stack.Back(2))
+func memoryCodeCopy(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), stack.back(2))
 }
 
-func memoryMLoad(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), big.NewInt(32))
+func memoryMLoad(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), big.NewInt(32))
 }
 
-func memoryMStore(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), big.NewInt(32))
+func memoryMStore(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), big.NewInt(32))
 }
 
-func memoryMStore8(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), big.NewInt(1))
+func memoryMStore8(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), big.NewInt(1))
 }
 
-func memoryLog(stack *Stack) *big.Int {
-	mSize, mStart := stack.Back(1), stack.Back(0)
+func memoryLog(stack *stack) *big.Int {
+	mSize, mStart := stack.back(1), stack.back(0)
 	return calcMemSize(mStart, mSize)
 }
 
-func memoryReturn(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), stack.Back(1))
+func memoryReturn(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), stack.back(1))
 }
 
-func memoryRevert(stack *Stack) *big.Int {
-	return calcMemSize(stack.Back(0), stack.Back(1))
+func memoryRevert(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), stack.back(1))
 }

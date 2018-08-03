@@ -9,17 +9,27 @@ type database interface {
 	GetBalance(addr types.Address, tokenTypeId types.TokenTypeId) *big.Int
 	SubBalance(addr types.Address, tokenTypeId types.TokenTypeId, amount *big.Int)
 	AddBalance(addr types.Address, tokenTypeId types.TokenTypeId, amount *big.Int)
+
 	Snapshot() int
 	RevertToSnapShot(revertId int)
+
 	IsExistAddress(addr types.Address) bool
+
 	CreateAccount(addr types.Address)
+
 	SetContractCode(addr types.Address, code []byte)
 	GetContractCode(addr types.Address) []byte
 	GetContractCodeHash(addr types.Address) types.Hash
+
 	GetState(addr types.Address, loc types.Hash) types.Hash
 	SetState(addr types.Address, loc types.Hash, value types.Hash)
+	GetStatesString(addr types.Address) string
+
 	AddRefund(refund uint64)
 	AddLog(log *Log)
+	AddTransaction(tx *Transaction)
+
+	GetHash(num uint64) types.Hash
 }
 
 type Log struct {
@@ -38,30 +48,17 @@ func (db *testDatabase) SubBalance(addr types.Address, tokenTypeId types.TokenTy
 }
 func (db *testDatabase) AddBalance(addr types.Address, tokenTypeId types.TokenTypeId, amount *big.Int) {
 }
-func (db *testDatabase) Snapshot() int {
-	return 0
-}
-func (db *testDatabase) RevertToSnapShot(revertId int) {
-}
-func (db *testDatabase) IsExistAddress(addr types.Address) bool {
-	return false
-}
-func (db *testDatabase) CreateAccount(addr types.Address) {
-}
-func (db *testDatabase) SetContractCode(addr types.Address, code []byte) {
-}
-func (db *testDatabase) GetContractCode(addr types.Address) []byte {
-	return nil
-}
-func (db *testDatabase) GetContractCodeHash(addr types.Address) types.Hash {
-	return types.Hash{}
-}
-func (db *testDatabase) GetState(addr types.Address, loc types.Hash) types.Hash {
-	return types.Hash{}
-}
-func (db *testDatabase) SetState(addr types.Address, loc types.Hash, value types.Hash) {
-}
-func (db *testDatabase) AddRefund(refund uint64) {
-}
-func (db *testDatabase) AddLog(log *Log) {
-}
+func (db *testDatabase) Snapshot() int                                                 { return 0 }
+func (db *testDatabase) RevertToSnapShot(revertId int)                                 {}
+func (db *testDatabase) IsExistAddress(addr types.Address) bool                        { return false }
+func (db *testDatabase) CreateAccount(addr types.Address)                              {}
+func (db *testDatabase) SetContractCode(addr types.Address, code []byte)               {}
+func (db *testDatabase) GetContractCode(addr types.Address) []byte                     { return nil }
+func (db *testDatabase) GetContractCodeHash(addr types.Address) types.Hash             { return types.Hash{} }
+func (db *testDatabase) GetState(addr types.Address, loc types.Hash) types.Hash        { return types.Hash{} }
+func (db *testDatabase) SetState(addr types.Address, loc types.Hash, value types.Hash) {}
+func (db *testDatabase) GetStatesString(addr types.Address) string                     { return "" }
+func (db *testDatabase) AddRefund(refund uint64)                                       {}
+func (db *testDatabase) AddLog(log *Log)                                               {}
+func (db *testDatabase) AddTransaction(tx *Transaction)                                {}
+func (db *testDatabase) GetHash(num uint64) types.Hash                                 { return types.Hash{} }

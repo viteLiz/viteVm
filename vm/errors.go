@@ -7,9 +7,9 @@ var (
 	ErrDepth                       = errors.New("max call Depth exceeded")
 	ErrInsufficientBalance         = errors.New("insufficient balance for transfer")
 	ErrContractAddressCreationFail = errors.New("contract address collision")
+	ErrExecutionReverted           = errors.New("execution reverted")
 )
 
 var (
-	errGasUintOverflow   = errors.New("gas uint64 overflow")
-	errExecutionReverted = errors.New("execution reverted")
+	errGasUintOverflow = errors.New("gas uint64 overflow")
 )

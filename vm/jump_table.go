@@ -5,10 +5,10 @@ import (
 )
 
 type (
-	executionFunc       func(pc *uint64, vm *VM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error)
-	gasFunc             func(*VM, *Contract, *Stack, *Memory, uint64) (uint64, error) // last parameter is the requested memory size as a uint64
-	stackValidationFunc func(*Stack) error
-	memorySizeFunc      func(*Stack) *big.Int
+	executionFunc       func(pc *uint64, vm *VM, contract *Contract, memory *memory, stack *stack) ([]byte, error)
+	gasFunc             func(*VM, *Contract, *stack, *memory, uint64) (uint64, error) // last parameter is the requested memory size as a uint64
+	stackValidationFunc func(*stack) error
+	memorySizeFunc      func(*stack) *big.Int
 )
 
 type operation struct {

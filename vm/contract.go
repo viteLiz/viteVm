@@ -8,29 +8,19 @@ import (
 type MethodSelector [4]byte
 
 type Contract struct {
-	caller     types.Address
-	self       types.Address
-	jumpdests  destinations
-	code       []byte
-	codeHash   types.Hash
-	codeAddr   types.Address
-	data       []byte
-	quotaLeft  uint64
-	tokenId    types.TokenTypeId
-	amount     *big.Int
-	quotaLimit map[MethodSelector]uint64
+	caller    types.Address
+	self      types.Address
+	jumpdests destinations
+	code      []byte
+	codeHash  types.Hash
+	codeAddr  types.Address
+	data      []byte
+	tokenId   types.TokenTypeId
+	amount    *big.Int
 }
 
-func NewContract(caller types.Address, object types.Address, tokenId types.TokenTypeId, amount *big.Int, quota uint64, parentJumpDests destinations) *Contract {
-	c := &Contract{caller: caller, self: object, tokenId: tokenId, amount: amount, quotaLeft: quota}
-
-	if parentJumpDests != nil {
-		c.jumpdests = parentJumpDests
-	} else {
-		c.jumpdests = make(destinations)
-	}
-
-	return c
+func NewContract(caller types.Address, object types.Address, tokenId types.TokenTypeId, amount *big.Int, data []byte) *Contract {
+	return &Contract{caller: caller, self: object, tokenId: tokenId, amount: amount, data: data, jumpdests: make(destinations)}
 }
 
 func (c *Contract) GetOp(n uint64) OpCode {
@@ -57,12 +47,4 @@ func (c *Contract) SetCallCode(addr types.Address, hash types.Hash, code []byte)
 	c.code = code
 	c.codeHash = hash
 	c.codeAddr = addr
-}
-
-func (c *Contract) UseQuota(gas uint64) (ok bool) {
-	if c.quotaLeft < gas {
-		return false
-	}
-	c.quotaLeft -= gas
-	return true
 }

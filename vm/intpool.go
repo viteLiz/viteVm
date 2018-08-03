@@ -10,7 +10,7 @@ const poolLimit = 256
 // intPool is a pool of big integers that
 // can be reused for all big.Int operations.
 type intPool struct {
-	pool *Stack
+	pool *stack
 }
 
 func newIntPool() *intPool {
