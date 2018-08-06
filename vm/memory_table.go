@@ -1,6 +1,8 @@
 package vm
 
-import "math/big"
+import (
+	"math/big"
+)
 
 func memoryBlake2b(stack *stack) *big.Int {
 	return calcMemSize(stack.back(0), stack.back(1))
@@ -11,6 +13,14 @@ func memoryCallDataCopy(stack *stack) *big.Int {
 }
 
 func memoryCodeCopy(stack *stack) *big.Int {
+	return calcMemSize(stack.back(0), stack.back(2))
+}
+
+func memoryExtCodeCopy(stack *stack) *big.Int {
+	return calcMemSize(stack.back(1), stack.back(3))
+}
+
+func memoryReturnDataCopy(stack *stack) *big.Int {
 	return calcMemSize(stack.back(0), stack.back(2))
 }
 
@@ -29,6 +39,12 @@ func memoryMStore8(stack *stack) *big.Int {
 func memoryLog(stack *stack) *big.Int {
 	mSize, mStart := stack.back(1), stack.back(0)
 	return calcMemSize(mStart, mSize)
+}
+
+func memoryDelegateCall(stack *stack) *big.Int {
+	x := calcMemSize(stack.back(3), stack.back(4))
+	y := calcMemSize(stack.back(1), stack.back(2))
+	return BigMax(x, y)
 }
 
 func memoryReturn(stack *stack) *big.Int {

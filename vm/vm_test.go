@@ -12,11 +12,12 @@ func TestRun(t *testing.T) {
 	vm := NewVM(Transaction{})
 	vm.StateDb = &testDatabase{}
 	vm.Debug = true
+	vm.quotaLeft = 1000000
 	// return 1+2
 	inputdata, _ := hex.DecodeString("6001600201602080919052602090F3")
 	contract := newContract(types.Address{}, types.Address{}, types.TokenTypeId{}, new(big.Int), inputdata)
 	contract.setCallCode(types.Address{}, types.Hash{}, inputdata)
-	ret, _, _ := run(vm, contract, 10000)
+	ret, _ := run(vm, contract)
 	expectedRet, _ := hex.DecodeString("03")
 	expectedRet = leftPadBytes(expectedRet, 32)
 	if bytes.Compare(ret, expectedRet) != 0 {

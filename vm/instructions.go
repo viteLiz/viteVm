@@ -403,6 +403,58 @@ func opCodeCopy(pc *uint64, vm *VM, contract *contract, memory *memory, stack *s
 	return nil, nil
 }
 
+func opExtCodeSize(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
+	addr := stack.peek()
+	contractAddress, _ := types.BytesToAddress(addr.Bytes())
+	addr.SetUint64(uint64(vm.StateDb.GetContractCodeSize(contractAddress)))
+	return nil, nil
+}
+
+func opExtCodeCopy(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
+	var (
+		addr       = stack.pop()
+		memOffset  = stack.pop()
+		codeOffset = stack.pop()
+		length     = stack.pop()
+	)
+	contractAddress, _ := types.BytesToAddress(addr.Bytes())
+	codeCopy := getDataBig(vm.StateDb.GetContractCode(contractAddress), codeOffset, length)
+	memory.set(memOffset.Uint64(), length.Uint64(), codeCopy)
+
+	vm.intPool.put(addr, memOffset, codeOffset, length)
+	return nil, nil
+}
+
+func opReturnDataSize(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
+	stack.push(vm.intPool.get().SetUint64(uint64(len(vm.returnData))))
+	return nil, nil
+}
+
+func opReturnDataCopy(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
+	var (
+		memOffset  = stack.pop()
+		dataOffset = stack.pop()
+		length     = stack.pop()
+
+		end = vm.intPool.get().Add(dataOffset, length)
+	)
+	defer vm.intPool.put(memOffset, dataOffset, length, end)
+
+	if end.BitLen() > 64 || uint64(len(vm.returnData)) < end.Uint64() {
+		return nil, errReturnDataOutOfBounds
+	}
+	memory.set(memOffset.Uint64(), length.Uint64(), vm.returnData[dataOffset.Uint64():end.Uint64()])
+
+	return nil, nil
+}
+
+func opExtCodeHash(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
+	addr := stack.peek()
+	contractAddress, _ := types.BytesToAddress(addr.Bytes())
+	addr.SetBytes(vm.StateDb.GetContractCodeHash(contractAddress).Bytes())
+	return nil, nil
+}
+
 func opBlockHash(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
 	num := stack.pop()
 	n := vm.intPool.get().Sub(vm.SnapshotHeight, Big256)
@@ -576,6 +628,24 @@ func makeLog(size int) executionFunc {
 		vm.intPool.put(mStart, mSize)
 		return nil, nil
 	}
+}
+
+func opDelegateCall(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {
+	addr, inOffset, inSize, outOffset, outSize := stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop()
+	contractAddress, _ := types.BytesToAddress(addr.Bytes())
+	data := memory.get(inOffset.Int64(), inSize.Int64())
+	ret, err := vm.delegateCall(contractAddress, data)
+	if err == nil || err == ErrExecutionReverted {
+		memory.set(outOffset.Uint64(), outSize.Uint64(), ret)
+	}
+	if err != nil {
+		stack.push(vm.intPool.getZero())
+	} else {
+		stack.push(vm.intPool.get().SetUint64(1))
+	}
+
+	vm.intPool.put(addr, inOffset, inSize, outOffset, outSize)
+	return ret, nil
 }
 
 func opReturn(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error) {

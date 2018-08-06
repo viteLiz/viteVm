@@ -132,6 +132,58 @@ func gasCodeCopy(vm *VM, contract *contract, stack *stack, mem *memory, memorySi
 	return gas, nil
 }
 
+func gasExtCodeCopy(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+	gas, err := memoryGasCost(mem, memorySize)
+	if err != nil {
+		return 0, err
+	}
+
+	var overflow bool
+	if gas, overflow = SafeAdd(gas, extCodeCopyGas); overflow {
+		return 0, errGasUintOverflow
+	}
+
+	wordGas, overflow := bigUint64(stack.back(3))
+	if overflow {
+		return 0, errGasUintOverflow
+	}
+
+	if wordGas, overflow = SafeMul(toWordSize(wordGas), copyGas); overflow {
+		return 0, errGasUintOverflow
+	}
+
+	if gas, overflow = SafeAdd(gas, wordGas); overflow {
+		return 0, errGasUintOverflow
+	}
+	return gas, nil
+}
+
+func gasReturnDataCopy(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+	gas, err := memoryGasCost(mem, memorySize)
+	if err != nil {
+		return 0, err
+	}
+
+	var overflow bool
+	if gas, overflow = SafeAdd(gas, fastestStepGas); overflow {
+		return 0, errGasUintOverflow
+	}
+
+	words, overflow := bigUint64(stack.back(2))
+	if overflow {
+		return 0, errGasUintOverflow
+	}
+
+	if words, overflow = SafeMul(toWordSize(words), copyGas); overflow {
+		return 0, errGasUintOverflow
+	}
+
+	if gas, overflow = SafeAdd(gas, words); overflow {
+		return 0, errGasUintOverflow
+	}
+	return gas, nil
+}
+
 func gasMLoad(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
 	var overflow bool
 	gas, err := memoryGasCost(mem, memorySize)
@@ -224,6 +276,18 @@ func makeGasLog(n uint64) gasFunc {
 		}
 		return gas, nil
 	}
+}
+
+func gasDelegateCall(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {
+	gas, err := memoryGasCost(mem, memorySize)
+	if err != nil {
+		return 0, err
+	}
+	var overflow bool
+	if gas, overflow = SafeAdd(gas, callGas); overflow {
+		return 0, errGasUintOverflow
+	}
+	return gas, nil
 }
 
 func gasReturn(vm *VM, contract *contract, stack *stack, mem *memory, memorySize uint64) (uint64, error) {

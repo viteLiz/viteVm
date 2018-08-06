@@ -16,9 +16,11 @@ type Database interface {
 	IsExistAddress(addr types.Address) bool
 
 	CreateAccount(addr types.Address)
+	DeleteAccount(addr types.Address)
 
 	SetContractCode(addr types.Address, code []byte)
 	GetContractCode(addr types.Address) []byte
+	GetContractCodeSize(addr types.Address) int
 	GetContractCodeHash(addr types.Address) types.Hash
 
 	GetState(addr types.Address, loc types.Hash) types.Hash
@@ -41,8 +43,10 @@ func (db *testDatabase) Snapshot() int                                          
 func (db *testDatabase) RevertToSnapShot(revertId int)                                 {}
 func (db *testDatabase) IsExistAddress(addr types.Address) bool                        { return false }
 func (db *testDatabase) CreateAccount(addr types.Address)                              {}
+func (db *testDatabase) DeleteAccount(addr types.Address)                              {}
 func (db *testDatabase) SetContractCode(addr types.Address, code []byte)               {}
 func (db *testDatabase) GetContractCode(addr types.Address) []byte                     { return nil }
+func (db *testDatabase) GetContractCodeSize(addr types.Address) int                    { return 0 }
 func (db *testDatabase) GetContractCodeHash(addr types.Address) types.Hash             { return types.Hash{} }
 func (db *testDatabase) GetState(addr types.Address, loc types.Hash) types.Hash        { return types.Hash{} }
 func (db *testDatabase) SetState(addr types.Address, loc types.Hash, value types.Hash) {}

@@ -7,9 +7,12 @@ const (
 	midStepGas     uint64 = 8
 	slowStepGas    uint64 = 10
 	extStepGas     uint64 = 20
-	balanceGas     uint64 = 20
-	sLoadGas       uint64 = 50
-	expByteGas     uint64 = 10
+	extCodeSizeGas uint64 = 700
+	extCodeCopyGas uint64 = 700
+	extCodeHashGas uint64 = 400
+	balanceGas     uint64 = 400
+	sLoadGas       uint64 = 200
+	expByteGas     uint64 = 50
 	//GasLimitBoundDivisor uint64 = 1024    // The bound divisor of the gas limit, used in update calculations.
 	//MinGasLimit          uint64 = 5000    // Minimum the gas limit may ever be.
 	//GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
@@ -34,7 +37,7 @@ const (
 	sstoreRefundGas uint64 = 15000 // Once per SSTORE operation if the zeroness changes to zero.
 	jumpdestGas     uint64 = 1     // Jumpdest gas cost.
 	//EpochDuration    uint64 = 30000 // Duration between proof-of-work epochs.
-	//CallGas          uint64 = 40    // Once per CALL operation & message call transaction.
+	callGas         uint64 = 700  // Once per CALL operation & message call transaction.
 	contractCodeGas uint64 = 200  // Per byte in contract code
 	callCreateDepth uint64 = 1024 // Maximum Depth of call/create stack.
 	copyGas         uint64 = 3    //

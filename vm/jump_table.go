@@ -255,6 +255,38 @@ func newInstructionSet() [256]operation {
 			memorySize:    memoryCodeCopy,
 			valid:         true,
 		},
+		EXTCODESIZE: {
+			execute:       opExtCodeSize,
+			gasCost:       constGasFunc(extCodeSizeGas),
+			validateStack: makeStackFunc(1, 1),
+			valid:         true,
+		},
+		EXTCODECOPY: {
+			execute:       opExtCodeCopy,
+			gasCost:       gasExtCodeCopy,
+			validateStack: makeStackFunc(4, 0),
+			memorySize:    memoryExtCodeCopy,
+			valid:         true,
+		},
+		RETURNDATASIZE: {
+			execute:       opReturnDataSize,
+			gasCost:       constGasFunc(quickStepGas),
+			validateStack: makeStackFunc(0, 1),
+			valid:         true,
+		},
+		RETURNDATACOPY: {
+			execute:       opReturnDataCopy,
+			gasCost:       gasReturnDataCopy,
+			validateStack: makeStackFunc(3, 0),
+			memorySize:    memoryReturnDataCopy,
+			valid:         true,
+		},
+		EXTCODEHASH: {
+			execute:       opExtCodeHash,
+			gasCost:       constGasFunc(extCodeHashGas),
+			validateStack: makeStackFunc(1, 1),
+			valid:         true,
+		},
 		BLOCKHASH: {
 			execute:       opBlockHash,
 			gasCost:       constGasFunc(extStepGas),
@@ -776,6 +808,14 @@ func newInstructionSet() [256]operation {
 			memorySize:    memoryReturn,
 			halts:         true,
 			valid:         true,
+		},
+		DELEGATECALL: {
+			execute:       opDelegateCall,
+			gasCost:       gasDelegateCall,
+			validateStack: makeStackFunc(5, 1),
+			memorySize:    memoryDelegateCall,
+			valid:         true,
+			returns:       true,
 		},
 		REVERT: {
 			execute:       opRevert,

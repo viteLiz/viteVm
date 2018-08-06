@@ -11,5 +11,6 @@ var (
 )
 
 var (
-	errGasUintOverflow = errors.New("gas uint64 overflow")
+	errGasUintOverflow       = errors.New("gas uint64 overflow")
+	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
 )
