@@ -102,11 +102,6 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 		return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
 	} else {
 		// receive
-		// check depth, do nothing but refund if reach the max depth
-		if vm.Depth > callCreateDepth {
-			// TODO refund and delete account, solve at next version
-			return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrDepth
-		}
 		// create a random address
 		contractAddr, _, err := types.CreateAddress()
 		if err != nil || vm.StateDb.IsExistAddress(contractAddr) {
@@ -118,6 +113,21 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 		// create contract account
 		vm.StateDb.CreateAccount(contractAddr)
 		vm.StateDb.AddBalance(contractAddr, vm.TokenTypeId, vm.Amount)
+		// check depth, do nothing but refund if reach the max depth
+		if vm.Depth > callCreateDepth {
+			if vm.Amount.Cmp(big0) > 0 {
+				vm.txs = append(vm.txs, &Transaction{
+					From:        contractAddr,
+					To:          vm.From,
+					TxType:      1,
+					TokenTypeId: vm.TokenTypeId,
+					Amount:      vm.Amount,
+					Depth:       vm.Depth + 1,
+				})
+			}
+			vm.StateDb.DeleteAccount(contractAddr)
+			return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrDepth
+		}
 
 		// init contract state and set contract code
 		contract := newContract(vm.From, contractAddr, vm.TokenTypeId, vm.Amount, nil)
@@ -139,14 +149,12 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 		} else {
 			if vm.Amount.Cmp(big0) > 0 {
 				vm.txs = append(vm.txs, &Transaction{
-					From:              vm.To,
-					To:                vm.From,
-					TxType:            1,
-					TokenTypeId:       vm.TokenTypeId,
-					Amount:            vm.Amount,
-					Depth:             vm.Depth + 1,
-					SnapshotTimestamp: vm.SnapshotTimestamp,
-					SnapshotHeight:    vm.SnapshotHeight,
+					From:        contractAddr,
+					To:          vm.From,
+					TxType:      1,
+					TokenTypeId: vm.TokenTypeId,
+					Amount:      vm.Amount,
+					Depth:       vm.Depth + 1,
 				})
 			}
 			vm.StateDb.DeleteAccount(contractAddr)
@@ -194,14 +202,12 @@ func (vm *VM) Call() (quota uint64, logs []*Log, txs []*Transaction, err error) 
 			if err != ErrOutOfQuota && vm.Amount.Cmp(big0) > 0 {
 				vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
 				vm.txs = append(vm.txs, &Transaction{
-					From:              vm.To,
-					To:                vm.From,
-					TxType:            1,
-					TokenTypeId:       vm.TokenTypeId,
-					Amount:            vm.Amount,
-					Depth:             vm.Depth + 1,
-					SnapshotTimestamp: vm.SnapshotTimestamp,
-					SnapshotHeight:    vm.SnapshotHeight,
+					From:        vm.To,
+					To:          vm.From,
+					TxType:      1,
+					TokenTypeId: vm.TokenTypeId,
+					Amount:      vm.Amount,
+					Depth:       vm.Depth + 1,
 				})
 			}
 			if err == ErrOutOfQuota {
