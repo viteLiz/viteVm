@@ -91,18 +91,17 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 	}
 
 	if vm.TxType == 1 {
-		// send
+		// send contract create transaction, sub balance and service fee
 		createFee := calcCreateContractFee()
 		if !canTransfer(vm.StateDb, vm.From, vm.TokenTypeId, vm.Amount, createFee) {
 			return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrInsufficientBalance
 		}
-		// sub balance and service fee
 		vm.StateDb.SubBalance(vm.From, vm.TokenTypeId, vm.Amount)
 		vm.StateDb.SubBalance(vm.From, viteTokenTypeId, createFee)
 		return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
 	} else {
-		// receive
-		// create a random address
+		// receive contract create transaction
+		// create a random address, return ErrContractAddressCreationFail error if fail, retry later
 		contractAddr, _, err := types.CreateAddress()
 		if err != nil || vm.StateDb.IsExistAddress(contractAddr) {
 			return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrContractAddressCreationFail
@@ -110,10 +109,10 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 
 		errorRevertId := vm.StateDb.Snapshot()
 
-		// create contract account
+		// create contract account and add balance
 		vm.StateDb.CreateAccount(contractAddr)
 		vm.StateDb.AddBalance(contractAddr, vm.TokenTypeId, vm.Amount)
-		// check depth, do nothing but refund if reach the max depth
+		// check depth, if transaction reaches the maximum depth of call/ create stack, refund and delete account
 		if vm.Depth > callCreateDepth {
 			if vm.Amount.Cmp(big0) > 0 {
 				vm.txs = append(vm.txs, &Transaction{
@@ -142,7 +141,7 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 			}
 		}
 
-		// revert if out of quota, refund and delete account otherwise
+		// revert if out of quota, retry later; refund and delete account otherwise.
 		if err == ErrOutOfQuota {
 			vm.StateDb.RevertToSnapShot(errorRevertId)
 			return types.Address{}, quotaInit, vm.logs, vm.txs, err
@@ -158,8 +157,8 @@ func (vm *VM) Create() (contractAddr types.Address, quota uint64, logs []*Log, t
 				})
 			}
 			vm.StateDb.DeleteAccount(contractAddr)
+			return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, err
 		}
-		return types.Address{}, quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, err
 	}
 }
 
@@ -189,6 +188,9 @@ func (vm *VM) Call() (quota uint64, logs []*Log, txs []*Transaction, err error) 
 		}
 		revertId := vm.StateDb.Snapshot()
 		vm.StateDb.AddBalance(vm.To, vm.TokenTypeId, vm.Amount)
+		if vm.StateDb.GetContractCodeSize(vm.To) == 0 {
+			return quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, nil
+		}
 		if vm.Depth > callCreateDepth {
 			return quotaUsed(quotaInit, vm.quotaLeft, vm.quotaReturn), vm.logs, vm.txs, ErrDepth
 		}
